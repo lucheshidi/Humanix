@@ -5,6 +5,11 @@
 #include <vector>
 #include <filesystem>
 
+#ifdef HAVE_READLINE
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
+
 using namespace humanix;
 
 // ANSI 颜色代码
@@ -122,21 +127,38 @@ int main() {
     while (true) {
         // 显示提示符
         std::string custom_ps1 = get_custom_prompt();
+        std::string prompt;
         
         if (!custom_ps1.empty()) {
-            // 使用自定义提示符
-            std::cout << colors::GREEN << custom_ps1 << colors::RESET << " ";
+            prompt = custom_ps1 + " ";
         } else {
-            // 默认提示符
             std::string cwd = get_current_dir_display();
-            std::cout << colors::GREEN << "humanix" << colors::RESET
-                      << colors::BLUE << " [" << cwd << "]" << colors::RESET
-                      << " " << colors::YELLOW << ">" << colors::RESET << " ";
+            prompt = "humanix [" + cwd + "] > ";
         }
+        
+        // 读取输入（支持 readline）
+        char* input = nullptr;
+#ifdef HAVE_READLINE
+        input = readline(prompt.c_str());
+        if (!input) break; // EOF
+        
+        // 添加到历史
+        if (*input) {
+            add_history(input);
+            line = std::string(input);
+        }
+        free(input);
+#else
+        // 简单模式：直接输出提示符
+        std::cout << colors::GREEN << "humanix" << colors::RESET
+                  << colors::BLUE << " [" << get_current_dir_display() << "]" << colors::RESET
+                  << " " << colors::YELLOW << ">" << colors::RESET << " ";
+        std::flush(std::cout);
         
         if (!std::getline(std::cin, line)) {
             break; // EOF
         }
+#endif
         
         // 跳过空行
         if (line.empty()) {

@@ -31,6 +31,16 @@ file(GLOB_RECURSE HUMANIX_SOURCES
 # 主可执行文件
 add_executable(humanix ${HUMANIX_SOURCES})
 
+# Linux 下链接 readline 库（用于命令行编辑和历史）
+if(UNIX AND NOT APPLE)
+    find_library(READLINE_LIB NAMES readline libreadline)
+    find_library(HISTORY_LIB NAMES history libhistory)
+    if(READLINE_LIB AND HISTORY_LIB)
+        target_link_libraries(humanix PRIVATE ${READLINE_LIB} ${HISTORY_LIB})
+        target_compile_definitions(humanix PRIVATE HAVE_READLINE)
+    endif()
+endif()
+
 # 输出目录配置（可选，便于调试）
 set_target_properties(humanix PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_DEBUG ${PROJECT_BINARY_DIR}/debug
