@@ -109,10 +109,10 @@ public:
 };
 
 // 自动注册命令（在程序启动时）
-struct CrtRegistrar {
+static struct CrtRegistrar {
     CrtRegistrar() {
         Dispatcher::instance().register_command(std::make_unique<CrtCommand>());
     }
-};
+} crt_registrar;
 
 } // namespace humanix
