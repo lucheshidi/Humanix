@@ -31,13 +31,49 @@ file(GLOB_RECURSE HUMANIX_SOURCES
 # 主可执行文件
 add_executable(humanix ${HUMANIX_SOURCES})
 
-# Linux 下链接 readline 库（用于命令行编辑和历史）
+# 静态链接选项（可选）
+option(BUILD_STATIC "Build static binary" OFF)
+if(BUILD_STATIC)
+    if(UNIX)
+        target_link_options(humanix PRIVATE -static)
+        message(STATUS "Building static binary")
+    else()
+        message(WARNING "Static build only supported on Unix systems")
+    endif()
+endif()
+
+# Linux 下使用 FetchContent 获取 readline（如果系统没有）
 if(UNIX AND NOT APPLE)
     find_library(READLINE_LIB NAMES readline libreadline)
     find_library(HISTORY_LIB NAMES history libhistory)
-    if(READLINE_LIB AND HISTORY_LIB)
+    
+    if(NOT READLINE_LIB OR NOT HISTORY_LIB)
+        # 系统没有 readline，使用 FetchContent
+        message(STATUS "readline not found, fetching from source...")
+        include(FetchContent)
+        
+        # 注意：readline 依赖 ncurses，这里简化处理
+        # 实际项目中可能需要更复杂的依赖处理
+        find_package(Curses QUIET)
+        if(NOT CURSES_FOUND)
+            message(WARNING "ncurses not found. readline support disabled.")
+        else()
+            FetchContent_Declare(
+                readline
+                GIT_REPOSITORY https://git.savannah.gnu.org/git/readline.git
+                GIT_TAG readline-8.2
+            )
+            
+            # readline 编译复杂，建议用户安装系统库
+            message(WARNING "Auto-fetching readline is complex. Please install libreadline-dev:")
+            message(WARNING "  Ubuntu/Debian: sudo apt install libreadline-dev")
+            message(WARNING "  Fedora: sudo dnf install readline-devel")
+        endif()
+    else()
+        # 使用系统库
         target_link_libraries(humanix PRIVATE ${READLINE_LIB} ${HISTORY_LIB})
         target_compile_definitions(humanix PRIVATE HAVE_READLINE)
+        message(STATUS "Found readline: ${READLINE_LIB}")
     endif()
 endif()
 

@@ -5,6 +5,13 @@
 #include <vector>
 #include <filesystem>
 
+#ifdef _WIN32
+#include <io.h>
+#define access _access
+#else
+#include <unistd.h>
+#endif
+
 #ifdef HAVE_READLINE
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -21,6 +28,82 @@ namespace colors {
     const char* YELLOW = "\033[33m";
     const char* RED = "\033[31m";
     const char* CYAN = "\033[36m";
+}
+
+/**
+ * 显示用法说明
+ */
+void show_usage() {
+    std::cout << "Humanix v1.0 - Modern Command-Line Tools\n\n";
+    std::cout << "Usage:\n";
+    std::cout << "  humanix [shell]              # Enter interactive shell\n";
+    std::cout << "  humanix [gl]                 # Generate command symlinks\n";
+    std::cout << "  humanix [help]               # Show this help\n\n";
+    std::cout << "Examples:\n";
+    std::cout << "  humanix shell                # Start shell\n";
+    std::cout << "  humanix gl                   # Create symlinks for all commands\n";
+    std::cout << "  ./crt test.txt               # Use command directly (after gl)\n\n";
+    std::cout << "Available commands:\n";
+    
+    auto commands = Dispatcher::instance().list_commands();
+    for (const auto& cmd : commands) {
+        std::cout << "  " << cmd << "\n";
+    }
+}
+
+/**
+ * 生成命令符号链接
+ */
+int generate_command_links(const std::string& target_dir = "") {
+    const auto commands = Dispatcher::instance().list_commands();
+
+    const std::string exe_path = std::filesystem::canonical("/proc/self/exe").string();
+    
+    // 确定目标目录
+    std::string install_dir;
+    if (!target_dir.empty()) {
+        install_dir = target_dir;
+    } else {
+        // 默认：可执行文件所在目录
+        install_dir = std::filesystem::path(exe_path).parent_path().string();
+    }
+    
+    // 检查目录是否存在
+    if (!std::filesystem::exists(install_dir)) {
+        std::cerr << "Error: Directory '" << install_dir << "' does not exist." << std::endl;
+        return 1;
+    }
+    
+    // 检查是否有写入权限
+    if (access(install_dir.c_str(), W_OK) != 0) {
+        std::cerr << "Error: Cannot write to " << install_dir << std::endl;
+        std::cerr << "Try running with sudo or specify a different directory." << std::endl;
+        return 1;
+    }
+    
+    std::cout << "Generating command links in " << install_dir << "...\n";
+    
+    int created = 0;
+    for (const auto& cmd : commands) {
+        std::string link_path = install_dir + "/" + cmd;
+        
+        // 删除已存在的链接
+        std::filesystem::remove(link_path);
+        
+        // 创建符号链接
+        try {
+            std::filesystem::create_symlink(exe_path, link_path);
+            std::cout << "  Created: " << cmd << " -> " << exe_path << "\n";
+            created++;
+        } catch (const std::exception& e) {
+            std::cerr << "  Failed to create link for " << cmd << ": " << e.what() << "\n";
+        }
+    }
+    
+    std::cout << "\nGenerated " << created << " command links.\n";
+    std::cout << "You can now use commands directly: crt, list, delete, etc.\n";
+    
+    return 0;
 }
 
 /**
@@ -119,7 +202,40 @@ std::pair<std::string, std::vector<std::string>> parse_input(const std::string& 
     return {command, args};
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    // 解析命令行参数
+    bool shell_mode = false;
+    bool generate_links = false;
+    std::string links_dir; // 符号链接目标目录
+    
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg == "shell" || arg == "[shell]") {
+            shell_mode = true;
+        } else if (arg == "gl" || arg == "[gl]" || arg == "generate-links" || arg == "[generate-links]") {
+            generate_links = true;
+            // 检查下一个参数是否为目录
+            if (i + 1 < argc && argv[i + 1][0] != '[' && argv[i + 1][0] != '-') {
+                links_dir = argv[++i];
+            }
+        } else if (arg == "help" || arg == "--help" || arg == "-h") {
+            show_usage();
+            return 0;
+        }
+    }
+    
+    // 没有参数，显示用法
+    if (!shell_mode && !generate_links) {
+        show_usage();
+        return 1;
+    }
+    
+    // 生成符号链接模式
+    if (generate_links) {
+        return generate_command_links(links_dir);
+    }
+    
+    // Shell 模式
     std::cout << colors::BOLD << colors::CYAN;
     std::cout << "Humanix v1.0" << colors::RESET << "\n\n";
     
@@ -137,9 +253,8 @@ int main() {
         }
         
         // 读取输入（支持 readline）
-        char* input = nullptr;
 #ifdef HAVE_READLINE
-        input = readline(prompt.c_str());
+        char* input = readline(prompt.c_str());
         if (!input) break; // EOF
         
         // 添加到历史

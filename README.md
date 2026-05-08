@@ -1,30 +1,30 @@
 # Humanix Standard v1.0
 
-## 1. 宣言
+## 1. Manifesto
 
-POSIX 命令系统过于反人类：缩写混乱、选项不一致、默认行为危险。我们设计 Humanix，目标是打造一套**更简洁、更一致、更安全、更现代**的命令行标准，并最终实现一个可完全替换 Busybox 的轻量核心工具集。
+The POSIX command system is too anti-human: it features confusing abbreviations, inconsistent options, and dangerous default behaviors. We designed Humanix with the goal of creating a **simpler, more consistent, safer, and more modern** command-line standard, and ultimately to provide a lightweight core toolset capable of fully replacing Busybox.
 
-## 2. 核心设计原则
+## 2. Core Design Principles
 
-- 命令名优先短而清晰
-- 选项尽量放在命令最前面（[option] 形式）
-- 支持智能默认 + 显式选项
-- 保留常用短别名，降低迁移成本
-- 危险操作默认安全，需要显式开启
+- Command names should be short and clear
+- Options should be placed at the very beginning of the command (in the form [option])
+- Support smart defaults + explicit options
+- Retain common short aliases to reduce migration costs
+- Dangerous operations are safe by default and require explicit enablement
 
-## 3. 核心命令列表
+## 3. List of Core Commands
 
-### 创建
+### Create
 ```humanix
 crt [d] [f] [force] <name>
 
-- 无选项：智能模式（带常见后缀 → 文件，无后缀 → 目录）
-- [d]：强制创建目录（默认递归创建中间目录）
-- [f]：强制创建文件
-- [d] 和 [f] 同时出现：报错
+- No options: Smart mode (files with common extensions → files; no extension → directory)
+- [d]: Force creation of a directory (recursively creates subdirectories by default)
+- [f]: Force creation of a file
+- [d] and [f] together: Report an error
 ```
 
-### 文件/目录操作
+### File/Directory Operations
 ```humanix
 list [human] [sort=name|size|time] [long] <path>  
 copy [r] [force] <src> <dst>  
@@ -32,18 +32,18 @@ move [force] <src> <dst>
 delete [r] [force] [preview] <target>...
 ```
 
-### 查看
+### View
 ```humanix
 show [page] [follow] <file>
 ```
 
-### 导航
+### Navigation
 ```humanix
-cd <path>                  # 支持 .. / ... / .... 等向上多级  
-cd -                       # 返回上一个目录
+cd <path>                  # Supports .. / ... / .... and other multi-level upward navigation  
+cd -                       # Return to the previous directory
 ```
 
-### 进程（统一）
+### Processes (Unified)
 ```humanix
 process list [sort=cpu|mem]  
 process kill <pid|name> [force]  
@@ -51,42 +51,42 @@ process find <name>
 process stop <name>
 ```
 
-### 权限（简化）
+### Permissions (Simplified)
 ```humanix
 perm [r] <mode> <target>  
 own  [r] <owner> <target>
 ```
 
-### 文本处理（统一为 echo）
+### Text Processing (Unified as `echo`)
 ```humanix
-echo "内容"  
-echo "内容" > file.txt  
-echo "内容" >> file.txt  
-echo grep "keyword" <file>  
-echo replace "old" "new" <file> [preview]  
+echo “Content”  
+echo “Content” > file.txt  
+echo “Content” >> file.txt  
+echo grep “keyword” <file>  
+echo replace “old” “new” <file> [preview]  
 echo count <file>
 ```
 
-### 搜索
+### Search
 ```humanix
-find [name=*.log] [content=关键词] [path=.]
+find [name=*.log] [content=keyword] [path=.]
 ```
 
-### 系统信息
+### System Information
 ```humanix
 sys info [cpu|mem|disk]  
 sys uptime
 ```
 
-### 其他
+### Miscellaneous
 ```humanix
 help [command]  
 exit
 ```
 
-## 4. 参数风格推荐
+## 4. Recommended Parameter Style
 
-**首选风格（选项靠前）**：
+**Preferred Style (Options First)**:
 ```humanix
 crt [d] myproject
 delete [r] [force] tempdir
@@ -94,13 +94,20 @@ list [human] [sort=size]
 copy [r] src dst
 ```
 
-**备选风格**：
-delete tempdir recursive=true
-list /home human=true
+## Optional: Command Line Editing
 
-## 5. 未来扩展方向
+For better shell experience (history, arrow keys), install libreadline:
+```bash
+# Ubuntu/Debian
+sudo apt install libreadline-dev
 
-- 完整 POSIX 兼容层（legacy 模式）
-- 中文别名支持（可选）
-- 结构化输出（--json）
-- 回收站机制（delete 默认进入回收站）
+# RedHat/CentOS
+sudo dnf install readline-devel
+```
+
+Then rebuild
+```bash
+cmake --build .
+```
+
+Without readline, the shell still works but without line editing and command history.
