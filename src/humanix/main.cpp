@@ -11,6 +11,7 @@
 #define access _access
 #else
 #include <unistd.h>
+#include <sys/stat.h>
 #endif
 
 #ifdef HAVE_READLINE
