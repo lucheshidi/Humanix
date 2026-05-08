@@ -318,15 +318,68 @@ int main(int argc, char* argv[]) {
         
         auto [command_name, args] = parse_input(line);
         
-        // 内置命令：exit 和 help
+        // 内置命令：exit, help, cd
         if (command_name == "exit") {
             std::cout << colors::CYAN << "Goodbye!" << colors::RESET << "\n";
             break;
         } else if (command_name == "help") {
             std::string help_cmd = args.empty() ? "" : args[0];
             std::string help_text = Dispatcher::instance().get_help(help_cmd);
-            // 简单高亮帮助文本
             std::cout << colors::CYAN << help_text << colors::RESET;
+            continue;
+        } else if (command_name == "cd") {
+            // cd 是内置命令，需要改变当前工作目录
+            if (args.empty()) {
+                // cd 无参数：回到主目录
+#ifdef _WIN32
+                const char* home = std::getenv("USERPROFILE");
+#else
+                const char* home = std::getenv("HOME");
+#endif
+                if (home) {
+                    std::filesystem::current_path(home);
+                } else {
+                    std::cerr << "Error: HOME not set.\n";
+                }
+            } else {
+                std::string target = args[0];
+                
+                // 支持 cd - （返回上一个目录）
+                static std::string last_dir;
+                if (target == "-") {
+                    if (!last_dir.empty()) {
+                        std::string current = std::filesystem::current_path().string();
+                        try {
+                            std::filesystem::current_path(last_dir);
+                            last_dir = current;
+                            std::cout << std::filesystem::current_path().string() << "\n";
+                        } catch (...) {
+                            std::cerr << "Error: Cannot change to previous directory.\n";
+                        }
+                    } else {
+                        std::cerr << "Error: No previous directory.\n";
+                    }
+                    continue;
+                }
+                
+                // 保存当前目录
+                last_dir = std::filesystem::current_path().string();
+                
+                // 支持 ... 等多级向上
+                if (target == "..") {
+                    target = "..";
+                } else if (target == "...") {
+                    target = "../..";
+                } else if (target == "....") {
+                    target = "../../..";
+                }
+                
+                try {
+                    std::filesystem::current_path(target);
+                } catch (const std::exception& e) {
+                    std::cerr << "cd: " << target << ": " << e.what() << "\n";
+                }
+            }
             continue;
         }
         

@@ -29,7 +29,8 @@ file(GLOB_RECURSE HUMANIX_SOURCES
 )
 
 # 主可执行文件
-add_executable(humanix ${HUMANIX_SOURCES})
+add_executable(humanix ${HUMANIX_SOURCES}
+        src/commands/jobs.cpp)
 
 # 静态链接选项（可选）
 option(BUILD_STATIC "Build static binary" OFF)
