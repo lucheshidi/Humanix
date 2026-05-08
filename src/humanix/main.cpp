@@ -54,7 +54,7 @@ void show_usage() {
 }
 
 /**
- * 生成命令包装脚本
+ * 生成命令链接（BusyBox 风格：复制或硬链接）
  */
 int generate_command_links(const std::string& target_dir = "") {
     const auto commands = Dispatcher::instance().list_commands();
@@ -83,51 +83,37 @@ int generate_command_links(const std::string& target_dir = "") {
         return 1;
     }
     
-    std::cout << "Generating command wrappers in " << install_dir << "...\n";
+    std::cout << "Installing commands to " << install_dir << "...\n";
     
     int created = 0;
+    for (const auto& cmd : commands) {
+        std::string cmd_path = install_dir + "/" + cmd;
+        
+        // 删除已存在的文件
+        std::filesystem::remove(cmd_path);
+        
+        // 复制二进制文件（BusyBox 风格）
+        try {
+            std::filesystem::copy_file(exe_path, cmd_path, 
+                std::filesystem::copy_options::overwrite_existing);
+            
 #ifdef _WIN32
-    // Windows: 生成 .bat 文件
-    for (const auto& cmd : commands) {
-        std::string script_path = install_dir + "/" + cmd + ".bat";
-        
-        std::ofstream script(script_path);
-        if (!script.is_open()) {
-            std::cerr << "  Failed to create " << cmd << ".bat\n";
-            continue;
-        }
-        
-        script << "@echo off\n";
-        script << "\"" << exe_path << "\" %*\n";
-        script.close();
-        
-        std::cout << "  Created: " << cmd << ".bat\n";
-        created++;
-    }
+            // Windows: 添加 .exe 扩展名
+            std::string exe_cmd_path = cmd_path + ".exe";
+            std::filesystem::rename(cmd_path, exe_cmd_path);
+            std::cout << "  Installed: " << cmd << ".exe\n";
 #else
-    // Linux: 生成 shell 脚本
-    for (const auto& cmd : commands) {
-        std::string script_path = install_dir + "/" + cmd;
-        
-        std::ofstream script(script_path);
-        if (!script.is_open()) {
-            std::cerr << "  Failed to create " << cmd << "\n";
-            continue;
-        }
-        
-        script << "#!/bin/sh\n";
-        script << "exec \"" << exe_path << "\" \"$@\"\n";
-        script.close();
-        
-        // 设置可执行权限
-        chmod(script_path.c_str(), 0755);
-        
-        std::cout << "  Created: " << cmd << "\n";
-        created++;
-    }
+            // Linux: 设置可执行权限
+            chmod(cmd_path.c_str(), 0755);
+            std::cout << "  Installed: " << cmd << "\n";
 #endif
+            created++;
+        } catch (const std::exception& e) {
+            std::cerr << "  Failed to install " << cmd << ": " << e.what() << "\n";
+        }
+    }
     
-    std::cout << "\nGenerated " << created << " command wrappers.\n";
+    std::cout << "\nInstalled " << created << " commands.\n";
     std::cout << "You can now use commands directly: crt, list, delete, etc.\n";
     
     return 0;
@@ -230,6 +216,29 @@ std::pair<std::string, std::vector<std::string>> parse_input(const std::string& 
 }
 
 int main(int argc, char* argv[]) {
+    // 检查是否通过符号链接/复制调用（argv[0] 包含命令名）
+    std::string prog_name = std::filesystem::path(argv[0]).stem().string();
+    
+    // 如果 prog_name 不是 "humanix"，说明是通过命令名直接调用
+    if (prog_name != "humanix" && !prog_name.empty()) {
+        // 直接执行对应命令
+        std::vector<std::string> args;
+        for (int i = 1; i < argc; i++) {
+            args.push_back(argv[i]);
+        }
+        
+        auto result = Dispatcher::instance().dispatch(prog_name, args);
+        
+        if (!result.output.empty()) {
+            std::cout << result.output;
+        }
+        if (!result.error.empty()) {
+            std::cerr << result.error;
+        }
+        
+        return result.exit_code;
+    }
+    
     // 解析命令行参数
     bool shell_mode = false;
     bool generate_links = false;
