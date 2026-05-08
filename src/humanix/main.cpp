@@ -1,5 +1,6 @@
 #include "humanix/dispatcher.h"
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <sstream>
 #include <vector>
@@ -52,7 +53,7 @@ void show_usage() {
 }
 
 /**
- * 生成命令符号链接
+ * 生成命令包装脚本
  */
 int generate_command_links(const std::string& target_dir = "") {
     const auto commands = Dispatcher::instance().list_commands();
@@ -81,26 +82,51 @@ int generate_command_links(const std::string& target_dir = "") {
         return 1;
     }
     
-    std::cout << "Generating command links in " << install_dir << "...\n";
+    std::cout << "Generating command wrappers in " << install_dir << "...\n";
     
     int created = 0;
+#ifdef _WIN32
+    // Windows: 生成 .bat 文件
     for (const auto& cmd : commands) {
-        std::string link_path = install_dir + "/" + cmd;
+        std::string script_path = install_dir + "/" + cmd + ".bat";
         
-        // 删除已存在的链接
-        std::filesystem::remove(link_path);
-        
-        // 创建符号链接
-        try {
-            std::filesystem::create_symlink(exe_path, link_path);
-            std::cout << "  Created: " << cmd << " -> " << exe_path << "\n";
-            created++;
-        } catch (const std::exception& e) {
-            std::cerr << "  Failed to create link for " << cmd << ": " << e.what() << "\n";
+        std::ofstream script(script_path);
+        if (!script.is_open()) {
+            std::cerr << "  Failed to create " << cmd << ".bat\n";
+            continue;
         }
+        
+        script << "@echo off\n";
+        script << "\"" << exe_path << "\" %*\n";
+        script.close();
+        
+        std::cout << "  Created: " << cmd << ".bat\n";
+        created++;
     }
+#else
+    // Linux: 生成 shell 脚本
+    for (const auto& cmd : commands) {
+        std::string script_path = install_dir + "/" + cmd;
+        
+        std::ofstream script(script_path);
+        if (!script.is_open()) {
+            std::cerr << "  Failed to create " << cmd << "\n";
+            continue;
+        }
+        
+        script << "#!/bin/sh\n";
+        script << "exec \"" << exe_path << "\" \"$@\"\n";
+        script.close();
+        
+        // 设置可执行权限
+        chmod(script_path.c_str(), 0755);
+        
+        std::cout << "  Created: " << cmd << "\n";
+        created++;
+    }
+#endif
     
-    std::cout << "\nGenerated " << created << " command links.\n";
+    std::cout << "\nGenerated " << created << " command wrappers.\n";
     std::cout << "You can now use commands directly: crt, list, delete, etc.\n";
     
     return 0;
