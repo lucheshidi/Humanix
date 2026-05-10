@@ -47,7 +47,7 @@ void show_usage() {
     std::cout << "  humanix gl                   # Create symlinks for all commands\n";
     std::cout << "  ./crt test.txt               # Use command directly (after gl)\n\n";
     std::cout << "Available commands:\n";
-    
+
     auto commands = Dispatcher::instance().list_commands();
     for (const auto& cmd : commands) {
         std::cout << "  " << cmd << "\n";
