@@ -27,21 +27,18 @@ public:
     
     CommandResult execute(const std::vector<std::string>& args) override {
         CommandResult result;
-        
+
         if (args.empty()) {
             // 列出所有环境变量
 #ifdef _WIN32
-            // Windows: 使用 GetEnvironmentStrings
-            LPWCH env_strings = GetEnvironmentStrings();
-            if (env_strings) {
-                LPWCH ptr = env_strings;
+            // Windows: 使用 GetEnvironmentStringsA (ANSI版本)
+            if (LPCH env_strings = GetEnvironmentStringsA()) {
+                LPCH ptr = env_strings;
                 while (*ptr) {
-                    std::wstring wstr(ptr);
-                    std::string str(wstr.begin(), wstr.end());
-                    result.output += str + "\n";
-                    ptr += wcslen(ptr) + 1;
+                    result.output += std::string(ptr) + "\n";
+                    ptr += strlen(ptr) + 1;
                 }
-                FreeEnvironmentStrings(env_strings);
+                FreeEnvironmentStringsA(env_strings);
             }
 #else
             // Linux/Unix: environ 全局变量
