@@ -39,19 +39,19 @@ public:
      * 列出所有已注册的命令
      * @return 命令名称列表
      */
-    std::vector<std::string> list_commands() const;
+    [[nodiscard]] std::vector<std::string> list_commands() const;
     
     /**
      * 获取命令帮助信息
      * @param command_name 命令名称（为空则显示所有命令概览）
      * @return 帮助文本
      */
-    std::string get_help(const std::string& command_name = "") const;
+    [[nodiscard]] std::string get_help(const std::string& command_name = "") const;
     
     /**
      * 检查命令是否存在
      */
-    bool has_command(const std::string& command_name) const;
+    [[nodiscard]] bool has_command(const std::string& command_name) const;
 
 private:
     Dispatcher() = default;

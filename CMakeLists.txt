@@ -30,7 +30,8 @@ file(GLOB_RECURSE HUMANIX_SOURCES
 
 # 主可执行文件
 add_executable(humanix ${HUMANIX_SOURCES}
-        src/commands/jobs.cpp)
+        src/commands/jobs.cpp
+        src/commands/env.cpp)
 
 # 静态链接选项（可选）
 option(BUILD_STATIC "Build static binary" OFF)
@@ -59,16 +60,10 @@ if(UNIX AND NOT APPLE)
         if(NOT CURSES_FOUND)
             message(WARNING "ncurses not found. readline support disabled.")
         else()
-            FetchContent_Declare(
-                readline
-                GIT_REPOSITORY https://git.savannah.gnu.org/git/readline.git
-                GIT_TAG readline-8.2
-            )
-            
             # readline 编译复杂，建议用户安装系统库
-            message(WARNING "Auto-fetching readline is complex. Please install libreadline-dev:")
+            message(WARNING "Please install libreadline-dev:")
             message(WARNING "  Ubuntu/Debian: sudo apt install libreadline-dev")
-            message(WARNING "  Fedora: sudo dnf install readline-devel")
+            message(WARNING "  RedHat/Fedora: sudo dnf install readline-devel")
         endif()
     else()
         # 使用系统库
