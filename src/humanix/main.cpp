@@ -5,6 +5,7 @@
 #include <sstream>
 #include <vector>
 #include <filesystem>
+#include <map>
 
 #ifdef _WIN32
 #include <io.h>
@@ -216,6 +217,9 @@ std::pair<std::string, std::vector<std::string>> parse_input(const std::string& 
 }
 
 int main(int argc, char* argv[]) {
+    // Shell 会话级别的环境变量
+    std::map<std::string, std::string> shell_env;
+    
     // 检查是否通过符号链接/复制调用（argv[0] 包含命令名）
     std::string prog_name = std::filesystem::path(argv[0]).stem().string();
     
