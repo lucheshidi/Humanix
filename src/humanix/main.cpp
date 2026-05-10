@@ -10,9 +10,13 @@
 #ifdef _WIN32
 #include <io.h>
 #define access _access
+#define W_OK 02
+#include <windows.h>
+#include <process.h>
 #else
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #endif
 
 #ifdef HAVE_READLINE
