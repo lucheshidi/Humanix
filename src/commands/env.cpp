@@ -46,7 +46,7 @@ public:
 #else
             // Linux/Unix: environ 全局变量
             extern char** environ;
-            for (char** env = environ; *env; ++env) {
+            for (char** env = ::environ; *env; ++env) {
                 result.output += std::string(*env) + "\n";
             }
 #endif
