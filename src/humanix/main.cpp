@@ -216,6 +216,67 @@ std::pair<std::string, std::vector<std::string>> parse_input(const std::string& 
     return {command, args};
 }
 
+/**
+ * 拼接参数为字符串
+ */
+std::string join_args(const std::vector<std::string>& args) {
+    std::string result;
+    for (size_t i = 0; i < args.size(); i++) {
+        if (i > 0) result += " ";
+        if (args[i].find(' ') != std::string::npos) {
+            result += "\"" + args[i] + "\"";
+        } else {
+            result += args[i];
+        }
+    }
+    return result;
+}
+
+/**
+ * 执行外部命令（在 PATH 中查找）
+ */
+CommandResult execute_external_command(const std::string& cmd_name, const std::vector<std::string>& args) {
+    CommandResult result;
+    
+    const char* path_env = std::getenv("PATH");
+    if (!path_env) {
+        result.exit_code = 127;
+        result.error = cmd_name + ": command not found";
+        return result;
+    }
+    
+    std::string path_str(path_env);
+    std::istringstream iss(path_str);
+    std::string dir;
+    
+    while (std::getline(iss, dir, ':')) {
+        if (dir.empty()) continue;
+        
+        std::string full_path = dir + "/" + cmd_name;
+        
+        if (std::filesystem::exists(full_path)) {
+            try {
+                int status = std::system((full_path + " " + join_args(args)).c_str());
+                
+#ifdef _WIN32
+                result.exit_code = status;
+#else
+                result.exit_code = WEXITSTATUS(status);
+#endif
+                return result;
+            } catch (const std::exception& e) {
+                result.exit_code = 126;
+                result.error = cmd_name + ": " + e.what();
+                return result;
+            }
+        }
+    }
+    
+    result.exit_code = 127;
+    result.error = cmd_name + ": command not found";
+    return result;
+}
+
 int main(int argc, char* argv[]) {
     // Shell 会话级别的环境变量
     std::map<std::string, std::string> shell_env;
